@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Cape Image Editor (64x32)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        minecraft: {
+                            dark: '#1e1b2e',
+                            panel: '#28243d',
+                            card: '#342f4e',
+                            accent: '#6366f1',
+                            accentHover: '#4f46e5',
+                            border: '#453f6b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom scrollbar and pixel rendering */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e1b2e;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #453f6b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6366f1;
+        }
+        .pixelated {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+<body class="bg-minecraft-dark text-slate-100 min-h-screen flex flex-col font-sans select-none">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-minecraft-panel border-b border-minecraft-border px-6 py-4 flex flex-wrap justify-between items-center shadow-md z-10">
+        <div class="flex items-center space-x-3">
+            <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-lg flex items-center justify-center">
+                <i class="fa-solid fa-cube text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
+                    CraftCape <span class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30 font-mono">64x32 UV</span>
+                </h1>
+                <p class="text-xs text-slate-400">Professional Minecraft Cape Pixel Editor</p>
+            </div>
+        </div>
+
+        <!-- Quick Actions Header -->
+        <div class="flex items-center gap-3 mt-3 sm:mt-0">
+            <button onclick="document.getElementById('fileInput').click()" class="flex items-center gap-2 px-3.5 py-2 bg-minecraft-card hover:bg-minecraft-border text-slate-200 rounded-lg text-sm font-medium transition border border-minecraft-border shadow-sm">
+                <i class="fa-solid fa-folder-open text-indigo-400"></i> Open PNG
+            </button>
+            <input type="file" id="fileInput" accept="image/png" class="hidden" onchange="handleFileUpload(event)">
+
+            <button onclick="loadDefaultCape()" class="flex items-center gap-2 px-3.5 py-2 bg-minecraft-card hover:bg-minecraft-border text-slate-200 rounded-lg text-sm font-medium transition border border-minecraft-border shadow-sm">
+                <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Sample / Blank
+            </button>
+
+            <button onclick="downloadCape()" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold transition shadow-lg shadow-indigo-600/30">
+                <i class="fa-solid fa-download"></i> Download PNG
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex flex-col lg:flex-row p-4 lg:p-6 gap-6 max-w-[1600px] w-full mx-auto">
+
+        <!-- Left Toolbar: Tools, Brush Size, History -->
+        <div class="flex lg:flex-col gap-4 overflow-x-auto lg:overflow-visible shrink-0">
+            <div class="bg-minecraft-panel border border-minecraft-border rounded-xl p-3 flex lg:flex-col gap-2 shadow-lg">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider hidden lg:block px-1 mb-1">Tools</span>
+                
+                <button onclick="setTool('pencil')" id="tool-pencil" title="Pencil (B)" class="tool-btn p-3 rounded-lg flex items-center justify-center text-lg transition bg-indigo-600 text-white shadow">
+                    <i class="fa-solid fa-pencil"></i>
+                </button>
+                <button onclick="setTool('eraser')" id="tool-eraser" title="Eraser (E)" class="tool-btn p-3 rounded-lg flex items-center justify-center text-lg transition bg-minecraft-card hover:bg-minecraft-border text-slate-300">
+                    <i class="fa-solid fa-eraser"></i>
+                </button>
+                <button onclick="setTool('fill')" id="tool-fill" title="Paint Bucket (G)" class="tool-btn p-3 rounded-lg flex items-center justify-center text-lg transition bg-minecraft-card hover:bg-minecraft-border text-slate-300">
+                    <i class="fa-solid fa-fill-drip"></i>
+                </button>
+                <button onclick="setTool('picker')" id="tool-picker" title="Eyedropper (I)" class="tool-btn p-3 rounded-lg flex items-center justify-center text-lg transition bg-minecraft-card hover:bg-minecraft-border text-slate-300">
+                    <i class="fa-solid fa-eye-dropper"></i>
+                </button>
+            </div>
+
+            <!-- Brush Size -->
+            <div class="bg-minecraft-panel border border-minecraft-border rounded-xl p-3 flex lg:flex-col items-center gap-2 shadow-lg">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider hidden lg:block px-1 mb-1">Brush</span>
+                <button onclick="setBrushSize(1)" id="brush-1" title="1x1 Pixel" class="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold transition bg-indigo-600 text-white shadow">1x1</button>
+                <button onclick="setBrushSize(2)" id="brush-2" title="2x2 Pixels" class="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold transition bg-minecraft-card hover:bg-minecraft-border text-slate-300">2x2</button>
+            </div>
+
+            <!-- History Actions -->
+            <div class="bg-minecraft-panel border border-minecraft-border rounded-xl p-3 flex lg:flex-col gap-2 shadow-lg">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider hidden lg:block px-1 mb-1">History</span>
+                <button onclick="undo()" title="Undo (Ctrl+Z)" class="p-3 rounded-lg flex items-center justify-center text-lg bg-minecraft-card hover:bg-minecraft-border text-slate-300 transition">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </button>
+                <button onclick="redo()" title="Redo (Ctrl+Y)" class="p-3 rounded-lg flex items-center justify-center text-lg bg-minecraft-card hover:bg-minecraft-border text-slate-300 transition">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+                <button onclick="clearCanvas()" title="Clear Canvas" class="p-3 rounded-lg flex items-center justify-center text-lg bg-minecraft-card hover:bg-rose-500/20 text-rose-400 transition">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Center: Interactive Canvas Editor -->
+        <div class="flex-1 flex flex-col gap-4 items-center justify-center">
+            
+            <!-- Canvas Toolbar / Controls -->
+            <div class="w-full bg-minecraft-panel border border-minecraft-border rounded-xl px-4 py-3 flex flex-wrap justify-between items-center gap-3 shadow-lg">
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-300">
+                        <input type="checkbox" id="gridToggle" checked onchange="toggleGrid()" class="w-4 h-4 rounded bg-minecraft-card border-minecraft-border text-indigo-600 focus:ring-indigo-500">
+                        Show Pixel Grid
+                    </label>
+                    <div class="h-4 w-[1px] bg-minecraft-border"></div>
+                    <span class="text-xs text-slate-400 font-mono">Canvas: 64 × 32 px</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="zoomCanvas(0.2)" class="px-2.5 py-1.5 bg-minecraft-card hover:bg-minecraft-border rounded text-sm text-slate-300 border border-minecraft-border"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                    <span id="zoomLevel" class="text-xs font-mono text-slate-400 w-12 text-center">100%</span>
+                    <button onclick="zoomCanvas(-0.2)" class="px-2.5 py-1.5 bg-minecraft-card hover:bg-minecraft-border rounded text-sm text-slate-300 border border-minecraft-border"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                    <button onclick="resetZoom()" class="px-3 py-1.5 bg-minecraft-card hover:bg-minecraft-border rounded text-xs text-slate-300 border border-minecraft-border font-medium">Fit</button>
+                </div>
+            </div>
+
+            <!-- Canvas Viewport Wrapper -->
+            <div id="canvasContainer" class="relative bg-minecraft-panel border border-minecraft-border rounded-2xl shadow-2xl p-6 overflow-auto max-h-[650px] w-full flex items-center justify-center">
+                <div class="relative shadow-2xl cursor-crosshair border border-slate-700/50 rounded-lg overflow-hidden" id="canvasWrapper" style="background-image: linear-gradient(45deg, #28243d 25%, transparent 25%), linear-gradient(-45deg, #28243d 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #28243d 75%), linear-gradient(-45deg, transparent 75%, #28243d 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px; background-color: #1a1728;">
+                    <canvas id="capeCanvas" width="64" height="32" class="pixelated block" style="width: 768px; height: 384px;"></canvas>
+                    <canvas id="gridCanvas" width="64" height="32" class="pixelated absolute top-0 left-0 pointer-events-none" style="width: 768px; height: 384px;"></canvas>
+                </div>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="w-full bg-minecraft-panel border border-minecraft-border rounded-xl px-4 py-2.5 flex flex-wrap justify-between items-center text-xs text-slate-400 shadow-md">
+                <div class="flex items-center gap-4">
+                    <span>Coords: <strong id="statusCoords" class="text-slate-200 font-mono">X: 0, Y: 0</strong></span>
+                    <span>Tool: <strong id="statusTool" class="text-indigo-400 capitalize">Pencil</strong></span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="flex items-center gap-1.5">Active Color: <div id="statusColorPreview" class="w-4 h-4 rounded border border-white/20 inline-block shadow-inner"></div></span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Panel: Color Palette, Recent Colors, UV Layout Guide -->
+        <div class="w-full lg:w-80 flex flex-col gap-6 shrink-0">
+            
+            <!-- Color Picker & Palette Section -->
+            <div class="bg-minecraft-panel border border-minecraft-border rounded-2xl p-5 shadow-lg flex flex-col gap-4">
+                <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-palette text-indigo-400"></i> Color Palette
+                </h3>
+
+                <!-- Current & Custom Color Input -->
+                <div class="flex items-center gap-3 bg-minecraft-card p-3 rounded-xl border border-minecraft-border">
+                    <div class="relative w-10 h-10 rounded-lg overflow-hidden shadow border border-white/20 shrink-0">
+                        <input type="color" id="colorPicker" value="#6366f1" onchange="selectCustomColor(this.value)" class="absolute -top-2 -left-2 w-16 h-16 cursor-pointer border-0 p-0">
+                    </div>
+                    <div class="flex-1">
+                        <label class="text-xs text-slate-400 block font-medium">Custom Hex</label>
+                        <input type="text" id="hexInput" value="#6366f1" onchange="selectCustomHex(this.value)" class="w-full bg-minecraft-dark border border-minecraft-border rounded px-2 py-1 text-xs text-slate-200 font-mono uppercase focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Preset Colors (Minecraft themed & standard) -->
+                <div>
+                    <span class="text-xs text-slate-400 font-medium mb-2 block">Preset Palette</span>
+                    <div class="grid grid-cols-8 gap-1.5" id="presetPalette">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <!-- Recent Colors History -->
+                <div>
+                    <span class="text-xs text-slate-400 font-medium mb-2 block">Recent Colors</span>
+                    <div class="flex gap-1.5 flex-wrap" id="recentPalette">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- UV Layout Reference Guide -->
+            <div class="bg-minecraft-panel border border-minecraft-border rounded-2xl p-5 shadow-lg flex flex-col gap-3">
+                <div class="flex justify-between items-center cursor-pointer" onclick="toggleGuide()">
+                    <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-map text-amber-400"></i> Cape UV Layout Guide
+                    </h3>
+                    <i id="guideChevron" class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
+                </div>
+
+                <div id="guideContent" class="text-xs text-slate-300 space-y-3 pt-2 border-t border-minecraft-border">
+                    <p class="text-slate-400">Standard Minecraft Java 64x32 cape coordinate map:</p>
+                    
+                    <div class="space-y-2 bg-minecraft-card p-3 rounded-xl border border-minecraft-border">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold text-indigo-400">Back Panel (Main)</span>
+                            <span class="font-mono text-[10px] bg-minecraft-dark px-1.5 py-0.5 rounded text-slate-400">X: 12-21, Y: 1-16</span>
+                        </div>
+                        <p class="text-slate-400 text-[11px]">The primary visible back side of your cape where the main artwork goes.</p>
+                    </div>
+
+                    <div class="space-y-2 bg-minecraft-card p-3 rounded-xl border border-minecraft-border">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold text-indigo-400">Front Panel</span>
+                            <span class="font-mono text-[10px] bg-minecraft-dark px-1.5 py-0.5 rounded text-slate-400">X: 1-10, Y: 1-16</span>
+                        </div>
+                        <p class="text-slate-400 text-[11px]">The inner/front-facing side of the cape.</p>
+                    </div>
+
+                    <div class="space-y-2 bg-minecraft-card p-3 rounded-xl border border-minecraft-border">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold text-indigo-400">Top & Bottom Strips</span>
+                            <span class="font-mono text-[10px] bg-minecraft-dark px-1.5 py-0.5 rounded text-slate-400">Y: 0</span>
+                        </div>
+                        <p class="text-slate-400 text-[11px]">Top and bottom edges of the cape (1px height).</p>
+                    </div>
+
+                    <div class="space-y-2 bg-minecraft-card p-3 rounded-xl border border-minecraft-border">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold text-indigo-400">Left & Right Sides</span>
+                            <span class="font-mono text-[10px] bg-minecraft-dark px-1.5 py-0.5 rounded text-slate-400">X: 0 & X: 11</span>
+                        </div>
+                        <p class="text-slate-400 text-[11px]">Vertical edge strips (1px width) for seamless side borders.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-minecraft-panel border-t border-minecraft-border py-3 text-center text-xs text-slate-400">
+        Minecraft 64x32 Cape Editor &bull; Built for Java Edition & Custom Cape Mods
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Canvas and Context Setup
+        const canvas = document.getElementById('capeCanvas');
+        const ctx = canvas.getContext('2d');
+        const gridCanvas = document.getElementById('gridCanvas');
+        const gridCtx = gridCanvas.getContext('2d');
+
+        const WIDTH = 64;
+        const HEIGHT = 32;
+
+        let currentTool = 'pencil'; // pencil, eraser, fill, picker
+        let brushSize = 1; // 1 or 2
+        let currentColor = [99, 102, 241, 255]; // RGBA
+        let showGrid = true;
+        let zoomScale = 12; // Base display scale (12 * 64 = 768px width)
+
+        // History Stack
+        let history = [];
+        let historyIndex = -1;
+        const MAX_HISTORY = 30;
+
+        // Recent colors list
+        let recentColors = [
+            [99, 102, 241], [239, 68, 68], [34, 197, 94], 
+            [234, 179, 8], [168, 85, 247], [255, 255, 255], [0, 0, 0]
+        ];
+
+        // Preset Minecraft colors
+        const presetColors = [
+            '#000000', '#1e1b2b', '#374151', '#6b7280', '#9ca3af', '#e5e7eb', '#ffffff',
+            '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#10b981',
+            '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#ec4899', '#f43f5e',
+            '#78350f', '#92400e', '#b45309', '#7f1d1d', '#581c87', '#312e81', '#1e3a8a'
+        ];
+
+        // Initialize App
+        window.onload = function() {
+            ctx.imageSmoothingEnabled = false;
+            gridCtx.imageSmoothingEnabled = false;
+            
+            initPresetPalette();
+            initRecentPalette();
+            loadDefaultCape();
+            updateZoomDisplay();
+
+            // Mouse event listeners for drawing
+            let isDrawing = false;
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDrawing = true;
+                handleDrawing(e);
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                updateCoordinates(e);
+                if (isDrawing) {
+                    handleDrawing(e);
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isDrawing) {
+                    isDrawing = false;
+                    saveState();
+                }
+            });
+
+            // Touch support
+            canvas.addEventListener('touchstart', (e) => {
+                isDrawing = true;
+                handleTouchDrawing(e);
+                e.preventDefault();
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                handleTouchDrawing(e);
+                e.preventDefault();
+            });
+
+            canvas.addEventListener('touchend', () => {
+                if (isDrawing) {
+                    isDrawing = false;
+                    saveState();
+                }
+            });
+
+            // Keyboard shortcuts
+            window.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT') return;
+                if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                    e.preventDefault();
+                    undo();
+                } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
+                    e.preventDefault();
+                    redo();
+                } else if (e.key.toLowerCase() === 'b') {
+                    setTool('pencil');
+                } else if (e.key.toLowerCase() === 'e') {
+                    setTool('eraser');
+                } else if (e.key.toLowerCase() === 'g') {
+                    setTool('fill');
+                } else if (e.key.toLowerCase() === 'i') {
+                    setTool('picker');
+                }
+            });
+        };
+
+        // Initialize Preset Palette UI
+        function initPresetPalette() {
+            const container = document.getElementById('presetPalette');
+            container.innerHTML = '';
+            presetColors.forEach(hex => {
+                const btn = document.createElement('button');
+                btn.className = 'w-7 h-7 rounded-md border border-white/10 hover:scale-110 transition shadow-sm';
+                btn.style.backgroundColor = hex;
+                btn.onclick = () => selectColorFromHex(hex);
+                container.appendChild(btn);
+            });
+        }
+
+        // Initialize Recent Colors UI
+        function initRecentPalette() {
+            const container = document.getElementById('recentPalette');
+            container.innerHTML = '';
+            recentColors.forEach(rgb => {
+                const hex = rgbToHex(rgb[0], rgb[1], rgb[2]);
+                const btn = document.createElement('button');
+                btn.className = 'w-7 h-7 rounded-md border border-white/10 hover:scale-110 transition shadow-sm';
+                btn.style.backgroundColor = hex;
+                btn.onclick = () => selectColorFromHex(hex);
+                container.appendChild(btn);
+            });
+        }
+
+        function addRecentColor(r, g, b) {
+            // Remove if exists
+            recentColors = recentColors.filter(c => !(c[0] === r && c[1] === g && c[2] === b));
+            recentColors.unshift([r, g, b]);
+            if (recentColors.length > 8) recentColors.pop();
+            initRecentPalette();
+        }
+
+        // Tool Selection
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'shadow');
+                btn.classList.add('bg-minecraft-card', 'text-slate-300');
+            });
+            const activeBtn = document.getElementById(`tool-${tool}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-minecraft-card', 'text-slate-300');
+                activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow');
+            }
+            document.getElementById('statusTool').innerText = tool;
+        }
+
+        // Brush Size Selection
+        function setBrushSize(size) {
+            brushSize = size;
+            document.getElementById('brush-1').className = size === 1 ? 'w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold transition bg-indigo-600 text-white shadow' : 'w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold transition bg-minecraft-card hover:bg-minecraft-border text-slate-300';
+            document.getElementById('brush-2').className = size === 2 ? 'w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold transition bg-indigo-600 text-white shadow' : 'w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold transition bg-minecraft-card hover:bg-minecraft-border text-slate-300';
+        }
+
+        // Color Selection
+        function selectColorFromHex(hex) {
+            const rgb = hexToRgb(hex);
+            if (rgb) {
+                currentColor = [rgb.r, rgb.g, rgb.b, 255];
+                document.getElementById('colorPicker').value = hex;
+                document.getElementById('hexInput').value = hex;
+                document.getElementById('statusColorPreview').style.backgroundColor = hex;
+                addRecentColor(rgb.r, rgb.g, rgb.b);
+            }
+        }
+
+        function selectCustomColor(hex) {
+            selectColorFromHex(hex);
+        }
+
+        function selectCustomHex(hex) {
+            if (/^#[0-9A-F]{6}$/i.test(hex)) {
+                selectColorFromHex(hex);
+            }
+        }
+
+        // Default Sample Cape Generator (Stylish Dark Blue / Gold / Obsidian Cape)
+        function loadDefaultCape() {
+            ctx.clearRect(0, 0, WIDTH, HEIGHT);
+            
+            // Transparent background by default
+            const imgData = ctx.createImageData(WIDTH, HEIGHT);
+            const data = imgData.data;
+
+            // Helper to set pixel
+            function setPx(x, y, r, g, b, a) {
+                if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
+                    const idx = (y * WIDTH + x) * 4;
+                    data[idx] = r;
+                    data[idx+1] = g;
+                    data[idx+2] = b;
+                    data[idx+3] = a;
+                }
+            }
+
+            // Fill transparent initially
+            for (let i = 0; i < data.length; i += 4) {
+                data[i+3] = 0;
+            }
+
+            // 1. Back Panel (X: 12-21, Y: 1-16) -> Main design: Deep indigo background with gold border & emblem
+            for (let y = 1; y <= 16; y++) {
+                for (let x = 12; x <= 21; x++) {
+                    // Border
+                    if (x === 12 || x === 21 || y === 1 || y === 16) {
+                        setPx(x, y, 234, 179, 8, 255); // Gold border
+                    } else {
+                        setPx(x, y, 30, 27, 46, 255); // Dark purple background
+                    }
+                }
+            }
+
+            // Gold Diamond Emblem on Back
+            const emblemPixels = [
+                [16, 5], [17, 5],
+                [15, 6], [16, 6], [17, 6], [18, 6],
+                [14, 7], [15, 7], [16, 7], [17, 7], [18, 7], [19, 7],
+                [14, 8], [15, 8], [16, 8], [17, 8], [18, 8], [19, 8],
+                [15, 9], [16, 9], [17, 9], [18, 9],
+                [16, 10], [17, 10]
+            ];
+            emblemPixels.forEach(([x, y]) => {
+                setPx(x, y, 99, 102, 241, 255); // Indigo core
+            });
+
+            // 2. Front Panel (X: 1-10, Y: 1-16)
+            for (let y = 1; y <= 16; y++) {
+                for (let x = 1; x <= 10; x++) {
+                    if (x === 1 || x === 10 || y === 1 || y === 16) {
+                        setPx(x, y, 234, 179, 8, 255);
+                    } else {
+                        setPx(x, y, 30, 27, 46, 255);
+                    }
+                }
+            }
+
+            // 3. Top Strip (X: 1-10, Y: 0) and Bottom Strip (X: 11-20, Y: 0) & Side Strips (X: 0, X: 11)
+            for (let x = 1; x <= 10; x++) setPx(x, 0, 234, 179, 8, 255);
+            for (let x = 11; x <= 20; x++) setPx(x, 0, 30, 27, 46, 255);
+            for (let y = 1; y <= 16; y++) {
+                setPx(0, y, 234, 179, 8, 255);
+                setPx(11, y, 234, 179, 8, 255);
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+            saveState();
+        }
+
+        // Canvas Drawing Handlers
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const x = Math.floor((clientX - rect.left) * scaleX);
+            const y = Math.floor((clientY - rect.top) * scaleY);
+            return { x, y };
+        }
+
+        function updateCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX;
+            const clientY = e.clientY;
+            
+            if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const x = Math.floor((clientX - rect.left) * scaleX);
+                const y = Math.floor((clientY - rect.top) * scaleY);
+                document.getElementById('statusCoords').innerText = `X: ${x}, Y: ${y}`;
+            }
+        }
+
+        function handleDrawing(e) {
+            const { x, y } = getCanvasCoords(e);
+            if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) return;
+
+            if (currentTool === 'pencil') {
+                drawPixels(x, y, currentColor, brushSize);
+            } else if (currentTool === 'eraser') {
+                drawPixels(x, y, [0, 0, 0, 0], brushSize);
+            } else if (currentTool === 'fill') {
+                floodFill(x, y, currentColor);
+                currentTool = 'pencil'; // Switch back after fill
+                setTool('pencil');
+            } else if (currentTool === 'picker') {
+                pickColor(x, y);
+                currentTool = 'pencil';
+                setTool('pencil');
+            }
+        }
+
+        function handleTouchDrawing(e) {
+            if (!e.touches || e.touches.length === 0) return;
+            handleDrawing(e.touches[0]);
+        }
+
+        function drawPixels(cx, cy, color, size) {
+            const imgData = ctx.getImageData(0, 0, WIDTH, HEIGHT);
+            const data = imgData.data;
+
+            for (let dy = 0; dy < size; dy++) {
+                for (let dx = 0; dx < size; dx++) {
+                    const nx = cx + dx;
+                    const ny = cy + dy;
+                    if (nx < WIDTH && ny < HEIGHT) {
+                        const idx = (ny * WIDTH + nx) * 4;
+                        data[idx] = color[0];
+                        data[idx+1] = color[1];
+                        data[idx+2] = color[2];
+                        data[idx+3] = color[3];
+                    }
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        function pickColor(x, y) {
+            const imgData = ctx.getImageData(x, y, 1, 1);
+            const d = imgData.data;
+            if (d[3] > 0) {
+                const hex = rgbToHex(d[0], d[1], d[2]);
+                selectColorFromHex(hex);
+            }
+        }
+
+        // Flood Fill Algorithm
+        function floodFill(startX, startY, fillColor) {
+            const imgData = ctx.getImageData(0, 0, WIDTH, HEIGHT);
+            const data = imgData.data;
+            
+            const targetIdx = (startY * WIDTH + startX) * 4;
+            const targetR = data[targetIdx];
+            const targetG = data[targetIdx+1];
+            const targetB = data[targetIdx+2];
+            const targetA = data[targetIdx+3];
+
+            // If target color is same as fill color, return
+            if (targetR === fillColor[0] && targetG === fillColor[1] && targetB === fillColor[2] && targetA === fillColor[3]) {
+                return;
+            }
+
+            const queue = [[startX, startY]];
+            const visited = new Uint8Array(WIDTH * HEIGHT);
+
+            while (queue.length > 0) {
+                const [x, y] = queue.pop();
+                if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) continue;
+                
+                const idx = y * WIDTH + x;
+                if (visited[idx]) continue;
+                visited[idx] = 1;
+
+                const currIdx = idx * 4;
+                if (
+                    data[currIdx] === targetR &&
+                    data[currIdx+1] === targetG &&
+                    data[currIdx+2] === targetB &&
+                    data[currIdx+3] === targetA
+                ) {
+                    data[currIdx] = fillColor[0];
+                    data[currIdx+1] = fillColor[1];
+                    data[currIdx+2] = fillColor[2];
+                    data[currIdx+3] = fillColor[3];
+
+                    queue.push([x + 1, y]);
+                    queue.push([x - 1, y]);
+                    queue.push([x, y + 1], x, y - 1);
+                    queue.push([x, y - 1]);
+                }
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+            saveState();
+        }
+
+        // History Management
+        function saveState() {
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+            history.push(ctx.getImageData(0, 0, WIDTH, HEIGHT));
+            if (history.length > MAX_HISTORY) {
+                history.shift();
+            } else {
+                historyIndex++;
+            }
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                ctx.putImageData(history[historyIndex], 0, 0);
+            }
+        }
+
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                ctx.putImageData(history[historyIndex], 0, 0);
+            }
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, WIDTH, HEIGHT);
+            saveState();
+        }
+
+        // File Operations
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+                    // Draw uploaded image, scaling to 64x32 with nearest-neighbor
+                    ctx.drawImage(img, 0, 0, WIDTH, HEIGHT);
+                    saveState();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        }
+
+        function downloadCape() {
+            const link = document.createElement('a');
+            link.download = 'minecraft_cape_64x32.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // Zoom & Grid Controls
+        function zoomCanvas(delta) {
+            zoomScale = Math.max(4, Math.min(24, zoomScale + delta * 5));
+            updateCanvasDimensions();
+            updateZoomDisplay();
+        }
+
+        function resetZoom() {
+            zoomScale = 12;
+            updateCanvasDimensions();
+            updateZoomDisplay();
+        }
+
+        function updateCanvasDimensions() {
+            const w = WIDTH * zoomScale;
+            const h = HEIGHT * zoomScale;
+            canvas.style.width = `${w}px`;
+            canvas.style.height = `${h}px`;
+            gridCanvas.style.width = `${w}px`;
+            gridCanvas.style.height = `${h}px`;
+            drawGrid();
+        }
+
+        function updateZoomDisplay() {
+            const percent = Math.round((zoomScale / 12) * 100);
+            document.getElementById('zoomLevel').innerText = `${percent}%`;
+        }
+
+        function toggleGrid() {
+            showGrid = document.getElementById('gridToggle').checked;
+            drawGrid();
+        }
+
+        function drawGrid() {
+            gridCtx.clearRect(0, 0, WIDTH, HEIGHT);
+            if (!showGrid || zoomScale < 6) return;
+
+            gridCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            gridCtx.lineWidth = 0.05;
+
+            gridCtx.beginPath();
+            for (let x = 0; x <= WIDTH; x++) {
+                gridCtx.moveTo(x, 0);
+                gridCtx.lineTo(x, HEIGHT);
+            }
+            for (let y = 0; y <= HEIGHT; y++) {
+                gridCtx.moveTo(0, y);
+                gridCtx.lineTo(WIDTH, y);
+            }
+            gridCtx.stroke();
+        }
+
+        // Guide Accordion Toggle
+        function toggleGuide() {
+            const content = document.getElementById('guideContent');
+            const chevron = document.getElementById('guideChevron');
+            content.classList.toggle('hidden');
+            chevron.classList.toggle('rotate-180');
+        }
+
+        // Utility Helpers
+        function hexToRgb(hex) {
+            const bigint = parseInt(hex.replace('#', ''), 16);
+            const r = (bigint >> 16) & 255;
+            const g = (bigint >> 8) & 255;
+            const b = bigint & 255;
+            return { r, g, b };
+        }
+
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(x => {
+                const hex = x.toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('');
+        }
+    </script>
+</body>
+</html>

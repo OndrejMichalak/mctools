@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft 3D Biome Generator & Datapack Creator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Inter + Silkscreen for MC style) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Silkscreen&display=swap" rel="stylesheet">
+    
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        mc: {
+                            bg: '#121317',
+                            panel: '#1e2026',
+                            border: '#2e323e',
+                            green: '#55ff55',
+                            accent: '#3b82f6',
+                            gold: '#ffa200',
+                            dirt: '#866043',
+                            grass: '#5c8e32'
+                        }
+                    },
+                    fontFamily: {
+                        mc: ['Silkscreen', 'cursive'],
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0c0d10;
+            color: #e2e8f0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #181a20;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333846;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5266;
+        }
+        .mc-font {
+            font-family: 'Silkscreen', cursive;
+        }
+        .glass-panel {
+            background: rgba(26, 29, 36, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        /* Range slider custom styling */
+        input[type=range] {
+            accent-color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col md:flex-row overflow-hidden select-none">
+
+    <!-- Left / Top Controls Sidebar -->
+    <div class="w-full md:w-[420px] lg:w-[460px] h-1/2 md:h-full flex flex-col bg-mc-panel border-r border-mc-border z-10 shadow-2xl flex-shrink-0">
+        <!-- Header -->
+        <div class="p-4 border-b border-mc-border flex items-center justify-between bg-mc-bg/60">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded bg-gradient-to-br from-green-600 to-emerald-800 flex items-center justify-center border border-green-400/30 shadow-inner">
+                    <i class="fa-solid fa-[#cube] text-white text-sm"></i>
+                    <span class="mc-font text-white text-lg">⛏️</span>
+                </div>
+                <div>
+                    <h1 class="mc-font text-sm text-green-400 tracking-wider">MC BIOME GEN</h1>
+                    <p class="text-[10px] text-gray-400">Datapack Builder for MC 1.21+ & 26.3+</p>
+                </div>
+            </div>
+            <span class="bg-blue-900/50 text-blue-300 text-[10px] px-2 py-0.5 rounded border border-blue-500/30 font-mono">v2.5</span>
+        </div>
+
+        <!-- Scrollable Control Settings -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
+
+            <!-- Presets Section -->
+            <div class="bg-mc-bg/40 p-3 rounded-lg border border-mc-border">
+                <label class="block font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Biome Preset
+                </label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="applyPreset('overworld')" class="px-2 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700 text-left flex items-center gap-1.5 transition">
+                        <span>🌳</span> Overworld
+                    </button>
+                    <button onclick="applyPreset('desert')" class="px-2 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700 text-left flex items-center gap-1.5 transition">
+                        <span>🏜️</span> Desert Dunes
+                    </button>
+                    <button onclick="applyPreset('islands')" class="px-2 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700 text-left flex items-center gap-1.5 transition">
+                        <span>🏝️</span> Floating Isles
+                    </button>
+                    <button onclick="applyPreset('caves')" class="px-2 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700 text-left flex items-center gap-1.5 transition">
+                        <span>🌋</span> Nether / Caves
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dimensions -->
+            <div class="bg-mc-bg/40 p-3 rounded-lg border border-mc-border space-y-3">
+                <div class="flex justify-between items-center">
+                    <label class="font-semibold text-gray-300 flex items-center gap-2">
+                        <i class="fa-solid fa-ruler-combined text-blue-400"></i> Dimensions (Voxels)
+                    </label>
+                    <span id="volumeStat" class="text-[10px] text-gray-400 font-mono">16x32x16 (8,192 blocks)</span>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <span class="text-gray-400 block text-[10px] mb-1">Width (X): <span id="valX" class="text-white font-bold">16</span></span>
+                        <input type="range" id="dimX" min="8" max="48" step="4" value="16" class="w-full" oninput="updateDimensions()">
+                    </div>
+                    <div>
+                        <span class="text-gray-400 block text-[10px] mb-1">Height (Y): <span id="valY" class="text-white font-bold">32</span></span>
+                        <input type="range" id="dimY" min="8" max="64" step="4" value="32" class="w-full" oninput="updateDimensions()">
+                    </div>
+                    <div>
+                        <span class="text-gray-400 block text-[10px] mb-1">Length (Z): <span id="valZ" class="text-white font-bold">16</span></span>
+                        <input type="range" id="dimZ" min="8" max="48" step="4" value="16" class="w-full" oninput="updateDimensions()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terrain Noise Generation Settings -->
+            <div class="bg-mc-bg/40 p-3 rounded-lg border border-mc-border space-y-3">
+                <label class="font-semibold text-gray-300 block flex items-center gap-2">
+                    <i class="fa-solid fa-mountain text-emerald-400"></i> Terrain Noise Controls
+                </label>
+                
+                <div>
+                    <div class="flex justify-between text-[11px] text-gray-400 mb-1">
+                        <span>Noise Scale</span>
+                        <span id="valScale" class="text-white font-mono">0.05</span>
+                    </div>
+                    <input type="range" id="noiseScale" min="0.01" max="0.2" step="0.005" value="0.05" class="w-full" oninput="renderPreview()">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <div class="flex justify-between text-[11px] text-gray-400 mb-1">
+                            <span>Base Height</span>
+                            <span id="valBaseHeight" class="text-white font-mono">8</span>
+                        </div>
+                        <input type="range" id="baseHeight" min="1" max="32" step="1" value="8" class="w-full" oninput="renderPreview()">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] text-gray-400 mb-1">
+                            <span>Height Scale</span>
+                            <span id="valHeightAmp" class="text-white font-mono">16</span>
+                        </div>
+                        <input type="range" id="heightAmp" min="2" max="48" step="1" value="16" class="w-full" oninput="renderPreview()">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <div class="flex justify-between text-[11px] text-gray-400 mb-1">
+                            <span>Water Level Y</span>
+                            <span id="valWaterLevel" class="text-white font-mono">10</span>
+                        </div>
+                        <input type="range" id="waterLevel" min="0" max="32" step="1" value="10" class="w-full" oninput="renderPreview()">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] text-gray-400 mb-1">
+                            <span>Seed</span>
+                            <span id="valSeed" class="text-white font-mono">12345</span>
+                        </div>
+                        <div class="flex gap-1">
+                            <input type="number" id="seed" value="12345" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-white font-mono text-[11px]" onchange="renderPreview()">
+                            <button onclick="randomizeSeed()" class="bg-slate-700 hover:bg-slate-600 text-white px-2 rounded"><i class="fa-solid fa-dice"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block Palette & Material Weights -->
+            <div class="bg-mc-bg/40 p-3 rounded-lg border border-mc-border space-y-3">
+                <div class="flex justify-between items-center">
+                    <label class="font-semibold text-gray-300 flex items-center gap-2">
+                        <i class="fa-solid fa-cubes text-purple-400"></i> Material Weights & Distribution
+                    </label>
+                    <button onclick="showAddBlockModal()" class="text-[10px] bg-purple-900/60 hover:bg-purple-800 border border-purple-500/40 text-purple-200 px-2 py-1 rounded transition flex items-center gap-1">
+                        <i class="fa-solid fa-plus"></i> Add Block
+                    </button>
+                </div>
+
+                <!-- Surface Rule Toggles -->
+                <div class="grid grid-cols-2 gap-2 bg-slate-900/60 p-2 rounded border border-slate-800">
+                    <div>
+                        <span class="text-gray-400 text-[10px]">Top Surface Block:</span>
+                        <select id="surfaceBlockSelect" onchange="renderPreview()" class="w-full bg-slate-800 border border-slate-700 rounded text-white text-[11px] p-1 mt-0.5">
+                            <option value="minecraft:grass_block">Grass Block</option>
+                            <option value="minecraft:sand">Sand</option>
+                            <option value="minecraft:red_sand">Red Sand</option>
+                            <option value="minecraft:snow_block">Snow Block</option>
+                            <option value="minecraft:podzol">Podzol</option>
+                            <option value="minecraft:moss_block">Moss Block</option>
+                            <option value="minecraft:netherrack">Netherrack</option>
+                            <option value="minecraft:stone">Stone</option>
+                        </select>
+                    </div>
+                    <div>
+                        <span class="text-gray-400 text-[10px]">Under Surface Block:</span>
+                        <select id="subSurfaceBlockSelect" onchange="renderPreview()" class="w-full bg-slate-800 border border-slate-700 rounded text-white text-[11px] p-1 mt-0.5">
+                            <option value="minecraft:dirt">Dirt</option>
+                            <option value="minecraft:sandstone">Sandstone</option>
+                            <option value="minecraft:terracotta">Terracotta</option>
+                            <option value="minecraft:stone">Stone</option>
+                            <option value="minecraft:deepslate">Deepslate</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Dynamic Sub-surface Underground Weights -->
+                <p class="text-[10px] text-gray-400 pt-1">Sub-surface Ore & Core Weights:</p>
+                <div id="blockListContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    <!-- Dynamic Blocks Injected Here -->
+                </div>
+            </div>
+
+            <!-- Datapack Export Metadata -->
+            <div class="bg-mc-bg/40 p-3 rounded-lg border border-mc-border space-y-3">
+                <label class="font-semibold text-gray-300 block flex items-center gap-2">
+                    <i class="fa-solid fa-file-zipper text-amber-400"></i> Datapack Configuration
+                </label>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-gray-400 text-[10px] block">Datapack Name</label>
+                        <input type="text" id="dpName" value="CustomBiome" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px] mt-0.5">
+                    </div>
+                    <div>
+                        <label class="text-gray-400 text-[10px] block">Namespace Folder</label>
+                        <input type="text" id="dpNamespace" value="my_biome" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px] mt-0.5">
+                    </div>
+                    <div>
+                        <label class="text-gray-400 text-[10px] block">Function Name</label>
+                        <input type="text" id="dpFunction" value="generate" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px] mt-0.5">
+                    </div>
+                    <div>
+                        <label class="text-gray-400 text-[10px] block">Pack Format (MC 1.21+)</label>
+                        <input type="number" id="dpPackFormat" value="48" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white text-[11px] mt-0.5">
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                    <input type="checkbox" id="optFillCmds" checked class="rounded bg-slate-900 border-slate-700 text-blue-500">
+                    <label for="optFillCmds" class="text-gray-300 text-[11px]">Optimize commands using <code>/fill</code> for matching blocks</label>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Action Export Buttons -->
+        <div class="p-4 border-t border-mc-border bg-mc-bg/80 space-y-2">
+            <button onclick="generateDatapack()" class="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold rounded-lg shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98]">
+                <i class="fa-solid fa-download"></i> Generate & Download Datapack (.zip)
+            </button>
+            <button onclick="copyFunctionCommand()" class="w-full py-1.5 px-4 bg-slate-800 hover:bg-slate-700 text-gray-300 rounded border border-slate-700 text-[11px] flex items-center justify-center gap-2 transition">
+                <i class="fa-solid fa-terminal text-blue-400"></i> Copy In-Game Command
+            </button>
+        </div>
+    </div>
+
+    <!-- Right 3D Canvas Area -->
+    <div class="flex-1 h-1/2 md:h-full relative bg-slate-950 overflow-hidden flex flex-col">
+        
+        <!-- Viewport Canvas Overlay Stats -->
+        <div class="absolute top-4 left-4 z-10 glass-panel px-3 py-2 rounded-lg flex items-center gap-4 text-xs">
+            <div>
+                <span class="text-gray-400 block text-[10px]">Total Blocks:</span>
+                <span id="statRenderedBlocks" class="font-bold text-green-400 font-mono">0</span>
+            </div>
+            <div class="h-6 w-px bg-slate-700"></div>
+            <div>
+                <span class="text-gray-400 block text-[10px]">Generated Commands:</span>
+                <span id="statCmdCount" class="font-bold text-blue-400 font-mono">0</span>
+            </div>
+            <div class="h-6 w-px bg-slate-700"></div>
+            <div>
+                <span class="text-gray-400 block text-[10px]">FPS:</span>
+                <span id="fpsCounter" class="font-bold text-amber-400 font-mono">60</span>
+            </div>
+        </div>
+
+        <!-- Controls Hint Overlay -->
+        <div class="absolute bottom-4 right-4 z-10 glass-panel px-3 py-1.5 rounded-lg text-[11px] text-gray-300 flex items-center gap-3">
+            <span><i class="fa-solid fa-mouse text-slate-400"></i> Left Click + Drag: Rotate</span>
+            <span><i class="fa-solid fa-arrows-up-down-left-right text-slate-400"></i> Right Click: Pan</span>
+            <span><i class="fa-solid fa-scroll text-slate-400"></i> Scroll: Zoom</span>
+        </div>
+
+        <!-- Three.js Canvas Container -->
+        <div id="canvasContainer" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+    </div>
+
+    <!-- Add Custom Block Modal -->
+    <div id="addBlockModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-mc-panel border border-mc-border rounded-xl p-5 w-80 space-y-4 shadow-2xl">
+            <h3 class="mc-font text-xs text-purple-400">Add Custom Block</h3>
+            <div>
+                <label class="text-gray-400 text-[11px] block mb-1">Block Identifier</label>
+                <input type="text" id="customBlockId" placeholder="minecraft:amethyst_block" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-white text-xs">
+            </div>
+            <div>
+                <label class="text-gray-400 text-[11px] block mb-1">Color Picker (Preview)</label>
+                <input type="color" id="customBlockColor" value="#8a2be2" class="w-full h-8 bg-slate-900 border border-slate-700 rounded cursor-pointer p-0.5">
+            </div>
+            <div>
+                <label class="text-gray-400 text-[11px] block mb-1">Initial Weight</label>
+                <input type="range" id="customBlockWeight" min="1" max="100" value="10" class="w-full">
+            </div>
+            <div class="flex gap-2 justify-end pt-2">
+                <button onclick="hideAddBlockModal()" class="px-3 py-1.5 rounded bg-slate-800 text-gray-300 text-xs hover:bg-slate-700">Cancel</button>
+                <button onclick="confirmAddBlock()" class="px-3 py-1.5 rounded bg-purple-600 text-white text-xs hover:bg-purple-500 font-semibold">Add Block</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- APP SCRIPT LOGIC -->
+    <script>
+        // --- PERLIN NOISE IMPLEMENTATION ---
+        const Perlin = (function() {
+            const p = new Uint8Array(512);
+            const permutation = [151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
+            8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
+            88,237,149,56,87,174,20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,77,146,158,231,83,111,
+            229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,54, 65,25,63,161,1,216,80,73,209,76,
+            132,187,208, 89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186, 3,64,52,217,226,250,
+            124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,
+            213,119,248,152,2,44,154,163, 70,221,153,101,155,167, 43,172,9,129,22,39,253,19,98,108,110,79,113,
+            224,232,178,185, 112,104,218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241, 81,51,145,
+            235,249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,138,
+            236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180];
+
+            function initSeed(seedValue) {
+                let s = Math.sin(seedValue) * 10000;
+                let rnd = () => (s = Math.sin(s) * 10000) - Math.floor(s);
+                let perm = [...permutation];
+                for (let i = perm.length - 1; i > 0; i--) {
+                    const j = Math.floor(rnd() * (i + 1));
+                    [perm[i], perm[j]] = [perm[j], perm[i]];
+                }
+                for (let i = 0; i < 256; i++) {
+                    p[i] = p[i + 256] = perm[i];
+                }
+            }
+            initSeed(12345);
+
+            function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+            function lerp(t, a, b) { return a + t * (b - a); }
+            function grad(hash, x, y, z) {
+                const h = hash & 15;
+                const u = h < 8 ? x : y;
+                const v = h < 4 ? y : h === 12 || h === 14 ? x : z;
+                return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+            }
+
+            return {
+                setSeed: initSeed,
+                noise2D: function(x, y) {
+                    let X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
+                    x -= Math.floor(x); y -= Math.floor(y);
+                    let u = fade(x), v = fade(y);
+                    let A = p[X] + Y, B = p[X + 1] + Y;
+                    return lerp(v, lerp(u, grad(p[A], x, y, 0), grad(p[B], x - 1, y, 0)),
+                                   lerp(u, grad(p[A + 1], x, y - 1, 0), grad(p[B + 1], x - 1, y - 1, 0)));
+                },
+                noise3D: function(x, y, z) {
+                    let X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
+                    x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
+                    let u = fade(x), v = fade(y), w = fade(z);
+                    let A = p[X] + Y, AA = p[A] + Z, AB = p[A + 1] + Z;
+                    let B = p[X + 1] + Y, BA = p[B] + Z, BB = p[B + 1] + Z;
+                    return lerp(w, lerp(v, lerp(u, grad(p[AA], x, y, z), grad(p[BA], x - 1, y, z)),
+                                           lerp(u, grad(p[AB], x, y - 1, z), grad(p[BB], x - 1, y - 1, z))),
+                                   lerp(v, lerp(u, grad(p[AA + 1], x, y, z - 1), grad(p[BA + 1], x - 1, y, z - 1)),
+                                           lerp(u, grad(p[AB + 1], x, y - 1, z - 1), grad(p[BB + 1], x - 1, y - 1, z - 1))));
+                }
+            };
+        })();
+
+        // Block Color & Material Registry
+        const BLOCK_PALETTE = {
+            'minecraft:air': { name: 'Air', color: null, transparent: true },
+            'minecraft:grass_block': { name: 'Grass Block', color: '#5c8e32' },
+            'minecraft:dirt': { name: 'Dirt', color: '#866043' },
+            'minecraft:stone': { name: 'Stone', color: '#737373' },
+            'minecraft:deepslate': { name: 'Deepslate', color: '#383838' },
+            'minecraft:bedrock': { name: 'Bedrock', color: '#1a1a1a' },
+            'minecraft:water': { name: 'Water', color: '#2b5dff', opacity: 0.65, transparent: true },
+            'minecraft:sand': { name: 'Sand', color: '#dbcb97' },
+            'minecraft:sandstone': { name: 'Sandstone', color: '#d1c28c' },
+            'minecraft:red_sand': { name: 'Red Sand', color: '#a85323' },
+            'minecraft:snow_block': { name: 'Snow Block', color: '#f0f8ff' },
+            'minecraft:podzol': { name: 'Podzol', color: '#593d28' },
+            'minecraft:moss_block': { name: 'Moss Block', color: '#4d6e27' },
+            'minecraft:netherrack': { name: 'Netherrack', color: '#612222' },
+            'minecraft:terracotta': { name: 'Terracotta', color: '#995f46' },
+            'minecraft:coal_ore': { name: 'Coal Ore', color: '#4a4a4a' },
+            'minecraft:iron_ore': { name: 'Iron Ore', color: '#bc9980' },
+            'minecraft:gold_ore': { name: 'Gold Ore', color: '#fcee4b' },
+            'minecraft:diamond_ore': { name: 'Diamond Ore', color: '#4dedf3' },
+            'minecraft:oak_log': { name: 'Oak Log', color: '#6d5032' },
+            'minecraft:oak_leaves': { name: 'Oak Leaves', color: '#386623', opacity: 0.9, transparent: true }
+        };
+
+        // Active State
+        let activeBlocks = [
+            { id: 'minecraft:stone', weight: 70 },
+            { id: 'minecraft:deepslate', weight: 20 },
+            { id: 'minecraft:coal_ore', weight: 5 },
+            { id: 'minecraft:iron_ore', weight: 3 },
+            { id: 'minecraft:diamond_ore', weight: 1 }
+        ];
+
+        // Three.js Core Globals
+        let scene, camera, renderer, controls;
+        let instancedMeshes = {};
+        let gridHelper, boxHelper;
+        let currentVoxelGrid = []; // [x][y][z] = blockId
+        let dimX = 16, dimY = 32, dimZ = 16;
+        let lastFrameTime = performance.now();
+        let frameCount = 0;
+
+        // Init 3D Viewport on Load
+        window.addEventListener('load', () => {
+            initThreeJS();
+            renderBlockListUI();
+            renderPreview();
+            setupWindowResize();
+        });
+
+        function initThreeJS() {
+            const container = document.getElementById('canvasContainer');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0c0d10);
+            scene.fog = new THREE.FogExp2(0x0c0d10, 0.015);
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(40, 60, 30);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            scene.add(dirLight);
+
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.3);
+            scene.add(hemiLight);
+
+            // Frame Loop
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+
+            // FPS Counter
+            frameCount++;
+            const now = performance.now();
+            if (now - lastFrameTime >= 1000) {
+                document.getElementById('fpsCounter').innerText = frameCount;
+                frameCount = 0;
+                lastFrameTime = now;
+            }
+        }
+
+        function setupWindowResize() {
+            window.addEventListener('resize', () => {
+                const container = document.getElementById('canvasContainer');
+                if (!container) return;
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        // --- TERRAIN GENERATION LOGIC ---
+        function generateVoxelGrid() {
+            dimX = parseInt(document.getElementById('dimX').value);
+            dimY = parseInt(document.getElementById('dimY').value);
+            dimZ = parseInt(document.getElementById('dimZ').value);
+            
+            const scale = parseFloat(document.getElementById('noiseScale').value);
+            const baseHeight = parseInt(document.getElementById('baseHeight').value);
+            const heightAmp = parseInt(document.getElementById('heightAmp').value);
+            const waterLvl = parseInt(document.getElementById('waterLevel').value);
+            const seed = parseInt(document.getElementById('seed').value) || 12345;
+
+            const topBlock = document.getElementById('surfaceBlockSelect').value;
+            const subBlock = document.getElementById('subSurfaceBlockSelect').value;
+
+            Perlin.setSeed(seed);
+
+            // 3D Array initialization
+            currentVoxelGrid = Array.from({ length: dimX }, () => 
+                Array.from({ length: dimY }, () => 
+                    new Array(dimZ).fill('minecraft:air')
+                )
+            );
+
+            // Cumulative Weights for Underground Blocks
+            const totalWeight = activeBlocks.reduce((acc, b) => acc + b.weight, 0);
+
+            let renderedBlockCount = 0;
+
+            for (let x = 0; x < dimX; x++) {
+                for (let z = 0; z < dimZ; z++) {
+                    // Height map via Perlin noise
+                    const n = Perlin.noise2D(x * scale, z * scale);
+                    const n2 = Perlin.noise2D(x * scale * 2, z * scale * 2) * 0.5;
+                    const h = Math.floor(baseHeight + (n + n2) * heightAmp);
+                    const surfaceY = Math.min(dimY - 1, Math.max(1, h));
+
+                    for (let y = 0; y < dimY; y++) {
+                        let block = 'minecraft:air';
+
+                        if (y === 0) {
+                            block = 'minecraft:bedrock';
+                        } else if (y === surfaceY) {
+                            block = topBlock;
+                        } else if (y < surfaceY && y >= surfaceY - 3) {
+                            block = subBlock;
+                        } else if (y < surfaceY) {
+                            // Underground Weighted Choice
+                            block = selectWeightedBlock(totalWeight);
+                        } else if (y > surfaceY && y <= waterLvl) {
+                            block = 'minecraft:water';
+                        }
+
+                        currentVoxelGrid[x][y][z] = block;
+                        if (block !== 'minecraft:air') renderedBlockCount++;
+                    }
+                }
+            }
+
+            document.getElementById('statRenderedBlocks').innerText = renderedBlockCount.toLocaleString();
+            calculateCommandStats();
+        }
+
+        function selectWeightedBlock(totalWeight) {
+            if (totalWeight <= 0 || activeBlocks.length === 0) return 'minecraft:stone';
+            let rnd = Math.random() * totalWeight;
+            for (let b of activeBlocks) {
+                if (rnd < b.weight) return b.id;
+                rnd -= b.weight;
+            }
+            return activeBlocks[0].id;
+        }
+
+        // Render Voxel Preview using InstancedMesh for performance
+        function renderPreview() {
+            // Update labels
+            document.getElementById('valScale').innerText = document.getElementById('noiseScale').value;
+            document.getElementById('valBaseHeight').innerText = document.getElementById('baseHeight').value;
+            document.getElementById('valHeightAmp').innerText = document.getElementById('heightAmp').value;
+            document.getElementById('valWaterLevel').innerText = document.getElementById('waterLevel').value;
+            document.getElementById('valSeed').innerText = document.getElementById('seed').value;
+
+            generateVoxelGrid();
+
+            // Clear old instanced meshes
+            Object.values(instancedMeshes).forEach(mesh => scene.remove(mesh));
+            instancedMeshes = {};
+
+            if (gridHelper) scene.remove(gridHelper);
+            if (boxHelper) scene.remove(boxHelper);
+
+            // Group positions by block ID
+            const blockPositions = {};
+
+            for (let x = 0; x < dimX; x++) {
+                for (let y = 0; y < dimY; y++) {
+                    for (let z = 0; z < dimZ; z++) {
+                        const blockId = currentVoxelGrid[x][y][z];
+                        if (blockId === 'minecraft:air') continue;
+
+                        // Occlusion Culling: Don't render interior fully opaque blocks
+                        if (isOpaque(blockId) && isFullyEnclosed(x, y, z)) continue;
+
+                        if (!blockPositions[blockId]) blockPositions[blockId] = [];
+                        blockPositions[blockId].push({ x, y, z });
+                    }
+                }
+            }
+
+            const boxGeometry = new THREE.BoxGeometry(0.98, 0.98, 0.98);
+            const matrix = new THREE.Matrix4();
+
+            // Center Scene Camera target
+            const centerX = dimX / 2;
+            const centerY = dimY / 2;
+            const centerZ = dimZ / 2;
+
+            Object.keys(blockPositions).forEach(blockId => {
+                const positions = blockPositions[blockId];
+                const blockDef = BLOCK_PALETTE[blockId] || { color: '#aa00ff' };
+                
+                const matConfig = {
+                    color: new THREE.Color(blockDef.color || '#ff00ff'),
+                    roughness: 0.8,
+                    metalness: 0.1
+                };
+
+                if (blockDef.transparent) {
+                    matConfig.transparent = true;
+                    matConfig.opacity = blockDef.opacity || 0.7;
+                }
+
+                const material = new THREE.MeshStandardMaterial(matConfig);
+                const count = positions.length;
+                const instancedMesh = new THREE.InstancedMesh(boxGeometry, material, count);
+                instancedMesh.castShadow = true;
+                instancedMesh.receiveShadow = true;
+
+                positions.forEach((pos, idx) => {
+                    matrix.setPosition(pos.x - centerX, pos.y, pos.z - centerZ);
+                    instancedMesh.setMatrixAt(idx, matrix);
+                });
+
+                instancedMesh.instanceMatrix.needsUpdate = true;
+                scene.add(instancedMesh);
+                instancedMeshes[blockId] = instancedMesh;
+            });
+
+            // Bounding Box Helper
+            const boxGeo = new THREE.BoxGeometry(dimX, dimY, dimZ);
+            const wireframe = new THREE.WireframeGeometry(boxGeo);
+            boxHelper = new THREE.LineSegments(wireframe, new THREE.LineBasicMaterial({ color: 0x3b82f6, opacity: 0.4, transparent: true }));
+            boxHelper.position.set(0, dimY / 2, 0);
+            scene.add(boxHelper);
+
+            // Update Camera target position
+            controls.target.set(0, dimY / 3, 0);
+            camera.position.set(dimX * 1.8, dimY * 1.5, dimZ * 2.2);
+        }
+
+        function isOpaque(blockId) {
+            const def = BLOCK_PALETTE[blockId];
+            return def && !def.transparent;
+        }
+
+        function isFullyEnclosed(x, y, z) {
+            if (x === 0 || x === dimX - 1 || y === 0 || y === dimY - 1 || z === 0 || z === dimZ - 1) return false;
+            return isOpaque(currentVoxelGrid[x+1][y][z]) &&
+                   isOpaque(currentVoxelGrid[x-1][y][z]) &&
+                   isOpaque(currentVoxelGrid[x][y+1][z]) &&
+                   isOpaque(currentVoxelGrid[x][y-1][z]) &&
+                   isOpaque(currentVoxelGrid[x][y][z+1]) &&
+                   isOpaque(currentVoxelGrid[x][y][z-1]);
+        }
+
+        function updateDimensions() {
+            document.getElementById('valX').innerText = document.getElementById('dimX').value;
+            document.getElementById('valY').innerText = document.getElementById('dimY').value;
+            document.getElementById('valZ').innerText = document.getElementById('dimZ').value;
+            
+            const total = parseInt(dimX) * parseInt(dimY) * parseInt(dimZ);
+            document.getElementById('volumeStat').innerText = `${dimX}x${dimY}x${dimZ} (${total.toLocaleString()} blocks)`;
+
+            renderPreview();
+        }
+
+        function randomizeSeed() {
+            const newSeed = Math.floor(Math.random() * 90000) + 10000;
+            document.getElementById('seed').value = newSeed;
+            renderPreview();
+        }
+
+        // --- PRESET SELECTION ---
+        function applyPreset(preset) {
+            const scale = document.getElementById('noiseScale');
+            const baseH = document.getElementById('baseHeight');
+            const amp = document.getElementById('heightAmp');
+            const water = document.getElementById('waterLevel');
+            const top = document.getElementById('surfaceBlockSelect');
+            const sub = document.getElementById('subSurfaceBlockSelect');
+
+            if (preset === 'overworld') {
+                scale.value = 0.05; baseH.value = 8; amp.value = 16; water.value = 10;
+                top.value = 'minecraft:grass_block'; sub.value = 'minecraft:dirt';
+                activeBlocks = [
+                    { id: 'minecraft:stone', weight: 85 },
+                    { id: 'minecraft:coal_ore', weight: 8 },
+                    { id: 'minecraft:iron_ore', weight: 5 },
+                    { id: 'minecraft:diamond_ore', weight: 2 }
+                ];
+            } else if (preset === 'desert') {
+                scale.value = 0.03; baseH.value = 12; amp.value = 8; water.value = 0;
+                top.value = 'minecraft:sand'; sub.value = 'minecraft:sandstone';
+                activeBlocks = [
+                    { id: 'minecraft:sandstone', weight: 80 },
+                    { id: 'minecraft:terracotta', weight: 15 },
+                    { id: 'minecraft:gold_ore', weight: 5 }
+                ];
+            } else if (preset === 'islands') {
+                scale.value = 0.08; baseH.value = 16; amp.value = 20; water.value = 0;
+                top.value = 'minecraft:moss_block'; sub.value = 'minecraft:stone';
+                activeBlocks = [
+                    { id: 'minecraft:stone', weight: 90 },
+                    { id: 'minecraft:diamond_ore', weight: 10 }
+                ];
+            } else if (preset === 'caves') {
+                scale.value = 0.09; baseH.value = 4; amp.value = 28; water.value = 6;
+                top.value = 'minecraft:netherrack'; sub.value = 'minecraft:terracotta';
+                activeBlocks = [
+                    { id: 'minecraft:netherrack', weight: 70 },
+                    { id: 'minecraft:deepslate', weight: 20 },
+                    { id: 'minecraft:gold_ore', weight: 10 }
+                ];
+            }
+            renderBlockListUI();
+            renderPreview();
+            showToast(`Applied ${preset.toUpperCase()} preset!`, 'success');
+        }
+
+        // --- BLOCK PALETTE MANAGEMENT ---
+        function renderBlockListUI() {
+            const container = document.getElementById('blockListContainer');
+            container.innerHTML = '';
+
+            activeBlocks.forEach((item, index) => {
+                const def = BLOCK_PALETTE[item.id] || { name: item.id.replace('minecraft:', ''), color: '#999' };
+                
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-2 bg-slate-900/80 p-2 rounded border border-slate-800 text-xs';
+                div.innerHTML = `
+                    <div class="w-4 h-4 rounded-sm flex-shrink-0 border border-white/20" style="background-color: ${def.color}"></div>
+                    <span class="truncate flex-1 font-mono text-[11px] text-gray-200" title="${item.id}">${def.name || item.id}</span>
+                    <input type="range" min="1" max="100" value="${item.weight}" class="w-20" oninput="updateBlockWeight(${index}, this.value)">
+                    <span class="w-6 text-right font-mono text-gray-400 text-[10px]">${item.weight}</span>
+                    <button onclick="removeBlock(${index})" class="text-red-400 hover:text-red-300 px-1"><i class="fa-solid fa-xmark"></i></button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateBlockWeight(index, val) {
+            activeBlocks[index].weight = parseInt(val);
+            renderBlockListUI();
+            renderPreview();
+        }
+
+        function removeBlock(index) {
+            if (activeBlocks.length <= 1) {
+                showToast('You must have at least one underground block weight!', 'warning');
+                return;
+            }
+            activeBlocks.splice(index, 1);
+            renderBlockListUI();
+            renderPreview();
+        }
+
+        function showAddBlockModal() {
+            document.getElementById('addBlockModal').classList.remove('hidden');
+        }
+
+        function hideAddBlockModal() {
+            document.getElementById('addBlockModal').classList.add('hidden');
+        }
+
+        function confirmAddBlock() {
+            const idInput = document.getElementById('customBlockId').value.trim();
+            const color = document.getElementById('customBlockColor').value;
+            const weight = parseInt(document.getElementById('customBlockWeight').value);
+
+            if (!idInput) {
+                showToast('Please enter a block identifier', 'error');
+                return;
+            }
+
+            let formattedId = idInput.includes(':') ? idInput : `minecraft:${idInput}`;
+
+            if (!BLOCK_PALETTE[formattedId]) {
+                BLOCK_PALETTE[formattedId] = {
+                    name: formattedId.replace('minecraft:', '').replace('_', ' '),
+                    color: color
+                };
+            }
+
+            activeBlocks.push({ id: formattedId, weight: weight });
+            hideAddBlockModal();
+            renderBlockListUI();
+            renderPreview();
+            showToast(`Added ${formattedId}`, 'success');
+        }
+
+        // --- COMMAND GENERATION & OPTIMIZATION (MCFUNCTION) ---
+        function generateMCFunctionCommands() {
+            const optimizeFill = document.getElementById('optFillCmds').checked;
+            const commands = [];
+            
+            if (!optimizeFill) {
+                // Naive setblock mode
+                for (let x = 0; x < dimX; x++) {
+                    for (let y = 0; y < dimY; y++) {
+                        for (let z = 0; z < dimZ; z++) {
+                            const block = currentVoxelGrid[x][y][z];
+                            if (block !== 'minecraft:air') {
+                                commands.push(`setblock ~${x} ~${y} ~${z} ${block}`);
+                            }
+                        }
+                    }
+                }
+                return commands;
+            }
+
+            // OPTIMIZED FILL GREEDY ALGORITHM (1D/3D Box Volume Merging)
+            const visited = Array.from({ length: dimX }, () => 
+                Array.from({ length: dimY }, () => 
+                    new Array(dimZ).fill(false)
+                )
+            );
+
+            for (let x = 0; x < dimX; x++) {
+                for (let y = 0; y < dimY; y++) {
+                    for (let z = 0; z < dimZ; z++) {
+                        if (visited[x][y][z]) continue;
+                        const block = currentVoxelGrid[x][y][z];
+                        if (block === 'minecraft:air') {
+                            visited[x][y][z] = true;
+                            continue;
+                        }
+
+                        // Find maximum bounding box for identical block
+                        let maxX = x;
+                        while (maxX + 1 < dimX && !visited[maxX + 1][y][z] && currentVoxelGrid[maxX + 1][y][z] === block) {
+                            maxX++;
+                        }
+
+                        let maxY = y;
+                        let canExtendY = true;
+                        while (canExtendY && maxY + 1 < dimY) {
+                            for (let ix = x; ix <= maxX; ix++) {
+                                if (visited[ix][maxY + 1][z] || currentVoxelGrid[ix][maxY + 1][z] !== block) {
+                                    canExtendY = false;
+                                    break;
+                                }
+                            }
+                            if (canExtendY) maxY++;
+                        }
+
+                        let maxZ = z;
+                        let canExtendZ = true;
+                        while (canExtendZ && maxZ + 1 < dimZ) {
+                            for (let ix = x; ix <= maxX; ix++) {
+                                for (let iy = y; iy <= maxY; iy++) {
+                                    if (visited[ix][iy][maxZ + 1] || currentVoxelGrid[ix][iy][maxZ + 1] !== block) {
+                                        canExtendZ = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (canExtendZ) maxZ++;
+                        }
+
+                        // Mark voxels inside box as visited
+                        for (let ix = x; ix <= maxX; ix++) {
+                            for (let iy = y; iy <= maxY; iy++) {
+                                for (let iz = z; iz <= maxZ; iz++) {
+                                    visited[ix][iy][iz] = true;
+                                }
+                            }
+                        }
+
+                        // Generate Command
+                        if (x === maxX && y === maxY && z === maxZ) {
+                            commands.push(`setblock ~${x} ~${y} ~${z} ${block}`);
+                        } else {
+                            commands.push(`fill ~${x} ~${y} ~${z} ~${maxX} ~${maxY} ~${maxZ} ${block}`);
+                        }
+                    }
+                }
+            }
+
+            return commands;
+        }
+
+        function calculateCommandStats() {
+            const cmds = generateMCFunctionCommands();
+            document.getElementById('statCmdCount').innerText = cmds.length.toLocaleString();
+        }
+
+        // --- DATAPACK EXPORT (ZIP GENERATION) ---
+        function generateDatapack() {
+            const dpName = document.getElementById('dpName').value.trim() || 'CustomBiome';
+            const namespace = document.getElementById('dpNamespace').value.trim() || 'my_biome';
+            const funcName = document.getElementById('dpFunction').value.trim() || 'generate';
+            const packFormat = parseInt(document.getElementById('dpPackFormat').value) || 48;
+
+            showToast('Generating Datapack Zip file...', 'info');
+
+            const zip = new JSZip();
+
+            // 1. pack.mcmeta
+            const packMeta = {
+                pack: {
+                    pack_format: packFormat,
+                    description: `Procedural 3D Biome Datapack generated for Minecraft 1.21+ / 26.3+`
+                }
+            };
+            zip.file('pack.mcmeta', JSON.stringify(packMeta, null, 2));
+
+            // 2. Function File
+            const commands = generateMCFunctionCommands();
+            const funcHeader = `# Generated by Minecraft 3D Biome Generator\n# Biome Size: ${dimX}x${dimY}x${dimZ}\n# Total Commands: ${commands.length}\n\n`;
+            const mcfunctionContent = funcHeader + commands.join('\n');
+
+            zip.file(`data/${namespace}/function/${funcName}.mcfunction`, mcfunctionContent);
+
+            // 3. Optional Clear function helper
+            const clearCmds = `fill ~ ~ ~ ~${dimX-1} ~${dimY-1} ~${dimZ-1} minecraft:air`;
+            zip.file(`data/${namespace}/function/clear.mcfunction`, `# Clear Biome Area\n${clearCmds}`);
+
+            // Download Zip
+            zip.generateAsync({ type: 'blob' }).then(function(content) {
+                saveAs(content, `${dpName}_Datapack.zip`);
+                showToast(`Datapack downloaded! Use /function ${namespace}:${funcName}`, 'success');
+            }).catch(err => {
+                showToast('Failed to build ZIP archive: ' + err.message, 'error');
+            });
+        }
+
+        function copyFunctionCommand() {
+            const namespace = document.getElementById('dpNamespace').value.trim() || 'my_biome';
+            const funcName = document.getElementById('dpFunction').value.trim() || 'generate';
+            const fullCmd = `/function ${namespace}:${funcName}`;
+
+            // ExecCommand Fallback for clipboard
+            const tempInput = document.createElement('input');
+            tempInput.value = fullCmd;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            showToast(`Copied command to clipboard: ${fullCmd}`, 'success');
+        }
+
+        // --- TOAST NOTIFICATION SYSTEM ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+
+            let colors = 'bg-slate-800 text-white border-slate-700';
+            let icon = 'fa-circle-info text-blue-400';
+
+            if (type === 'success') {
+                colors = 'bg-slate-900 text-green-300 border-green-500/40';
+                icon = 'fa-circle-check text-green-400';
+            } else if (type === 'warning') {
+                colors = 'bg-slate-900 text-amber-300 border-amber-500/40';
+                icon = 'fa-triangle-exclamation text-amber-400';
+            } else if (type === 'error') {
+                colors = 'bg-slate-900 text-red-300 border-red-500/40';
+                icon = 'fa-circle-xmark text-red-400';
+            }
+
+            toast.className = `pointer-events-auto px-4 py-2.5 rounded-lg border shadow-xl flex items-center gap-3 text-xs font-medium transform transition-all duration-300 translate-y-2 opacity-0 ${colors}`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i> <span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-[-10px]');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
